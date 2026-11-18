@@ -10,7 +10,7 @@ interface Profile {
   role: "admin" | "operator" | "viewer";
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -19,6 +19,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [permissionResult, setPermissionResult] = useState("");
 
   async function loadProfile(accessToken: string) {
     try {
@@ -78,6 +79,64 @@ function App() {
     };
   }, []);
 
+
+  async function handleDemoLogin(role: "admin" | "viewer") {
+  setError("");
+  setLoading(true);
+
+  try {
+    const response = await fetch(`${API_URL}/api/demo/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Demo login failed");
+    }
+
+    const { data, error: sessionError } =
+      await supabase.auth.setSession({
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token,
+      });
+
+    if (sessionError || !data.session) {
+      throw new Error(sessionError?.message || "Could not create session");
+    }
+
+    setSession(data.session);
+    await loadProfile(data.session.access_token);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Demo login failed");
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function testAdminAccess() {
+  if (!session) return;
+
+  setPermissionResult("Checking...");
+
+  try {
+    const response = await fetch(`${API_URL}/api/admin/demo-check`, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    const result = await response.json();
+
+    setPermissionResult(
+      `${response.status}: ${result.message}`,
+    );
+  } catch {
+    setPermissionResult("Could not reach API");
+  }
+}
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -140,6 +199,24 @@ function App() {
             <p className="mb-8 mt-2 text-sm text-slate-400">
               Sign in to access your Prohori workspace.
             </p>
+
+            <div className="mb-6 grid grid-cols-2 gap-3">
+  <button
+    onClick={() => handleDemoLogin("admin")}
+    disabled={loading}
+    className="rounded-lg bg-cyan-500 px-3 py-3 font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
+  >
+    Demo Admin
+  </button>
+
+  <button
+    onClick={() => handleDemoLogin("viewer")}
+    disabled={loading}
+    className="rounded-lg border border-slate-600 px-3 py-3 font-semibold hover:bg-slate-800 disabled:opacity-50"
+  >
+    Demo User
+  </button>
+</div>
 
             <form onSubmit={handleLogin} className="space-y-5">
               <div>
@@ -218,6 +295,33 @@ function App() {
                   <p className="text-green-400">
                     API authentication successful
                   </p>
+
+                  <div className="mt-6 border-t border-slate-800 pt-5">
+  <p className="mb-3 text-sm text-slate-400">
+    Role permission verification
+  </p>
+
+  <button
+    onClick={testAdminAccess}
+    className="rounded-lg border border-cyan-500 px-4 py-2 text-sm text-cyan-400 hover:bg-slate-800"
+  >
+    Test Admin-only API
+  </button>
+
+  {permissionResult && (
+    <p className="mt-3 text-sm text-cyan-300">
+      {permissionResult}
+    </p>
+  )}
+
+  <p className="mt-4 text-sm text-slate-400">
+    {profile?.role === "admin"
+      ? "You have full administrative access."
+      : profile?.role === "operator"
+        ? "You can manage day-to-day agent operations."
+        : "Read-only access. You cannot perform administrative actions."}
+  </p>
+</div>
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-amber-400">
