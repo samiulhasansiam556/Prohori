@@ -1,5 +1,6 @@
 
 import express from "express";
+import { authRouter } from "./routes/auth.js";
 
 export const app = express();
 
@@ -41,3 +42,6 @@ app.get("/api/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+
+app.use("/api/auth", authRouter);
