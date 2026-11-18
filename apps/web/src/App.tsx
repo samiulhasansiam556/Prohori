@@ -95,3 +95,5 @@ function App() {
 }
 
 export default App;
+
+// Production API configuration
