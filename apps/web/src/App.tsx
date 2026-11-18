@@ -12,7 +12,7 @@ function App() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch("/api/health")
+    fetch(`${import.meta.env.VITE_API_URL || ""}/api/health`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("API unavailable");
