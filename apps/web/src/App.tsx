@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 interface HealthResponse {
@@ -47,26 +46,20 @@ function App() {
         </h2>
 
         <p className="mt-8 max-w-2xl text-lg leading-8 text-slate-400">
-          Prohori is an AgentOps control plane designed to monitor,
-          govern and secure AI agents through centralized policies,
-          tool permissions and observability.
+          Prohori is an AgentOps control plane designed to monitor, govern and secure AI agents
+          through centralized policies, tool permissions and observability.
         </p>
 
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {[
             ["01", "Agent Governance", "Control agent permissions and access."],
             ["02", "MCP Gateway", "Secure every agent tool interaction."],
-            ["03", "Observability", "Track execution, decisions and cost."]
+            ["03", "Observability", "Track execution, decisions and cost."],
           ].map(([number, title, description]) => (
-            <article
-              key={number}
-              className="rounded-xl border border-slate-800 bg-slate-900 p-6"
-            >
+            <article key={number} className="rounded-xl border border-slate-800 bg-slate-900 p-6">
               <span className="text-sm text-cyan-400">{number}</span>
               <h3 className="mt-5 text-xl font-semibold">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-400">
-                {description}
-              </p>
+              <p className="mt-3 text-sm leading-6 text-slate-400">{description}</p>
             </article>
           ))}
         </div>
@@ -82,11 +75,7 @@ function App() {
             />
 
             <span className="text-sm text-slate-300">
-              {health
-                ? "API Connected"
-                : error
-                  ? "API Disconnected"
-                  : "Connecting to API..."}
+              {health ? "API Connected" : error ? "API Disconnected" : "Connecting to API..."}
             </span>
           </div>
 

@@ -9,6 +9,6 @@ app.get("/api/health", (_req, res) => {
     success: true,
     service: "prohori-api",
     status: "healthy",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });

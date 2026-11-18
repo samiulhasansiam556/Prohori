@@ -31,3 +31,4 @@ security, observability, and control over AI agents.
 
 ```bash
 npm install
+```
