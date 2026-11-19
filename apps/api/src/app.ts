@@ -3,7 +3,7 @@ import express from "express";
 import { authRouter } from "./routes/auth.js";
 import { demoRouter } from "./routes/demo.js";
 import { adminRouter } from "./routes/admin.js";
-
+import { gatewayRouter } from "./routes/gateway.js";
 import { knowledgeRouter } from "./routes/knowledge.js";
 
 
@@ -53,5 +53,6 @@ app.use("/api/demo", demoRouter);
 app.use("/api/admin", adminRouter);
 
 app.use("/api/knowledge", knowledgeRouter);
+app.use("/api/gateway", gatewayRouter);
 
 app.use("/api/auth", authRouter);
