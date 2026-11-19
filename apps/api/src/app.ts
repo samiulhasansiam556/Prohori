@@ -4,6 +4,9 @@ import { authRouter } from "./routes/auth.js";
 import { demoRouter } from "./routes/demo.js";
 import { adminRouter } from "./routes/admin.js";
 
+import { knowledgeRouter } from "./routes/knowledge.js";
+
+
 export const app = express();
 
 const allowedOrigins = [
@@ -48,5 +51,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/demo", demoRouter);
 app.use("/api/admin", adminRouter);
+
+app.use("/api/knowledge", knowledgeRouter);
 
 app.use("/api/auth", authRouter);
