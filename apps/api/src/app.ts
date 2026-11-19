@@ -5,7 +5,7 @@ import { demoRouter } from "./routes/demo.js";
 import { adminRouter } from "./routes/admin.js";
 import { gatewayRouter } from "./routes/gateway.js";
 import { knowledgeRouter } from "./routes/knowledge.js";
-
+import { runsRouter } from "./routes/runs.js";
 
 export const app = express();
 
@@ -54,5 +54,5 @@ app.use("/api/admin", adminRouter);
 
 app.use("/api/knowledge", knowledgeRouter);
 app.use("/api/gateway", gatewayRouter);
-
+app.use("/api/runs", runsRouter);
 app.use("/api/auth", authRouter);

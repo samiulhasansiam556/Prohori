@@ -40,7 +40,7 @@ function redact(value: unknown): unknown {
     return value
       .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[EMAIL]")
       .replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[SSN]")
-      .replace(/\b(?:\+?\d[\d\s()-]{8,}\d)\b/g, "[PHONE]");
+      .replace(/(?<![\d.])(?:\+?\d[\d\s()-]{8,}\d)(?![\d.])/g, "[PHONE]");
   }
 
   if (Array.isArray(value)) return value.map(redact);
