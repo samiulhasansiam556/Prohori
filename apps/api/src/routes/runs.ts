@@ -394,25 +394,20 @@ if (needsPolicyEvidence) {
     `${gatewayBase.replace(/\/$/, "")}/api/gateway/tools/${toolName}`,
     {
       method: "POST",
-      headers: {
+           headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-    body: JSON.stringify({
-  agentId: agent_id,
-  args,
-}),
+      body: JSON.stringify({
+        agentId: agent_id,
+        runId,
+        args,
+      }),
       signal: AbortSignal.timeout(120000),
     }
   );
 
   const gatewayResult: any = await gatewayResponse.json();
-
- body: JSON.stringify({
-  agentId: agent_id,
-  runId,
-  args,
-})
 
   if (
     !gatewayResponse.ok ||
@@ -475,6 +470,7 @@ policyEvidenceText =
   "Cite only these retrieved sources.";
 }}
 
+stepNo = await getLastStepNo(supabase, runId);
 const messages: any[] = [
   {
     role: "system",
@@ -534,13 +530,17 @@ const messages: any[] = [
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`,
               },
-              body: JSON.stringify({ agentId: agent_id, args }),
+              body: JSON.stringify({
+  agentId: agent_id,
+  runId,
+  args,
+}),
               signal: AbortSignal.timeout(120000),
             }
           );
 
          
-          
+
 
          const gatewayResult: any = await gatewayResponse.json();
 
@@ -580,6 +580,7 @@ const messages: any[] = [
                 reason: gatewayResult.reason ?? gatewayResult.message,
               }),
             });
+            stepNo = await getLastStepNo(supabase, runId);
             continue;
           }
 

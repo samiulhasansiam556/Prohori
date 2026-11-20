@@ -597,15 +597,18 @@ if (parentRunId) {
         latencyMs: Date.now() - started,
       });
 
-   if (ownsRun) {
-  await supabase
-    .from("runs")
-    .update({
-      status: "failed",
-      ended_at: new Date().toISOString(),
-    })
-    .eq("id", run.id);
-}
+      if (ownsRun) {
+        const { error: updateError } = await supabase
+          .from("runs")
+          .update({
+            status: "completed",
+            final_output: JSON.stringify(safeResult),
+            ended_at: new Date().toISOString(),
+          })
+          .eq("id", run.id);
+
+        if (updateError) throw updateError;
+      }
 
       await writeAudit(supabase, user.tenantId, user.id, "gateway.tool_executed", "run", run.id, {
         toolName,
@@ -622,13 +625,15 @@ if (parentRunId) {
     } catch (error) {
       console.error("[GATEWAY EXECUTION ERROR]", error);
 
-      await supabase
-        .from("runs")
-        .update({
-          status: "failed",
-          ended_at: new Date().toISOString(),
-        })
-        .eq("id", run.id);
+           if (ownsRun) {
+        await supabase
+          .from("runs")
+          .update({
+            status: "failed",
+            ended_at: new Date().toISOString(),
+          })
+          .eq("id", run.id);
+      }
 
       throw error;
     }
