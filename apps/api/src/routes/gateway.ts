@@ -27,6 +27,7 @@ const toolServers: Record<string, string> = {
 
 const toolSchema = z.object({
   agentId: z.string().uuid(),
+  runId: z.string().uuid().optional(),
   args: z.record(z.string(), z.unknown()).default({}),
 });
 
@@ -140,6 +141,28 @@ async function addTrace(
   });
 
   if (error) throw error;
+}
+
+
+
+
+
+
+async function getNextStepNo(
+  supabase: ReturnType<typeof createUserSupabaseClient>,
+  runId: string,
+): Promise<number> {
+  const { data, error } = await supabase
+    .from("trace_steps")
+    .select("step_no")
+    .eq("run_id", runId)
+    .order("step_no", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return (data?.step_no ?? 0) + 1;
 }
 
 async function callMcpTool(
@@ -353,7 +376,7 @@ gatewayRouter.post("/tools/:toolName", requireAuth, async (req, res) => {
   const user = res.locals.authUser;
   const accessToken = req.headers.authorization!.slice(7);
   const supabase = createUserSupabaseClient(accessToken);
-  const { agentId, args } = parsed.data;
+ const { agentId, args, runId: parentRunId } = parsed.data;
 
   try {
     const { data: agent, error: agentError } = await supabase
@@ -435,33 +458,67 @@ gatewayRouter.post("/tools/:toolName", requireAuth, async (req, res) => {
       },
       permission: permission ?? null,
     });
+let run: { id: string };
+let ownsRun = false;
 
-    const { data: run, error: runError } = await supabase
-      .from("runs")
-      .insert({
-        tenant_id: user.tenantId,
-        agent_id: agentId,
-        user_input: JSON.stringify(
-          redact({
-            toolName,
-            args,
-          })
-        ),
-        status:
-          evaluation.decision === "require_approval"
-            ? "waiting_approval"
-            : evaluation.decision === "deny"
-              ? "blocked"
-              : "running",
-      })
-      .select()
-      .single();
+if (parentRunId) {
+  const { data: parentRun, error: parentRunError } = await supabase
+    .from("runs")
+    .select("id, agent_id, status")
+    .eq("id", parentRunId)
+    .eq("agent_id", agentId)
+    .eq("tenant_id", user.tenantId)
+    .maybeSingle();
 
-    if (runError || !run) throw runError ?? new Error("Run creation failed.");
+  if (parentRunError) throw parentRunError;
 
+  if (!parentRun) {
+    return res.status(404).json({
+      success: false,
+      message: "Parent run not found for this agent and tenant.",
+    });
+  }
+
+  if (parentRun.status !== "running") {
+    return res.status(409).json({
+      success: false,
+      message: "Parent run is not accepting tool executions.",
+    });
+  }
+
+  run = { id: parentRun.id };
+} else {
+  const { data: newRun, error: runError } = await supabase
+    .from("runs")
+    .insert({
+      tenant_id: user.tenantId,
+      agent_id: agentId,
+      user_input: JSON.stringify(
+        redact({
+          toolName,
+          args,
+        })
+      ),
+      status:
+        evaluation.decision === "require_approval"
+          ? "waiting_approval"
+          : evaluation.decision === "deny"
+            ? "blocked"
+            : "running",
+    })
+    .select("id")
+    .single();
+
+  if (runError || !newRun) {
+    throw runError ?? new Error("Run creation failed.");
+  }
+
+  run = { id: newRun.id };
+  ownsRun = true;
+}
     await addTrace(supabase, {
       runId: run.id,
-      stepNo: 1,
+      stepNo: await getNextStepNo(supabase, run.id),
       type: "policy",
       toolName,
       args,
@@ -530,7 +587,7 @@ gatewayRouter.post("/tools/:toolName", requireAuth, async (req, res) => {
 
       await addTrace(supabase, {
         runId: run.id,
-        stepNo: 2,
+       stepNo: await getNextStepNo(supabase, run.id),
         type: "tool_call",
         toolName,
         args,
@@ -540,14 +597,15 @@ gatewayRouter.post("/tools/:toolName", requireAuth, async (req, res) => {
         latencyMs: Date.now() - started,
       });
 
-      await supabase
-        .from("runs")
-        .update({
-          status: "completed",
-          final_output: JSON.stringify(safeResult),
-          ended_at: new Date().toISOString(),
-        })
-        .eq("id", run.id);
+   if (ownsRun) {
+  await supabase
+    .from("runs")
+    .update({
+      status: "failed",
+      ended_at: new Date().toISOString(),
+    })
+    .eq("id", run.id);
+}
 
       await writeAudit(supabase, user.tenantId, user.id, "gateway.tool_executed", "run", run.id, {
         toolName,
@@ -673,7 +731,7 @@ gatewayRouter.post(
 
         await addTrace(supabase, {
           runId: run.id,
-          stepNo: 2,
+         stepNo: await getNextStepNo(supabase, run.id),
           type: "approval",
           decision: "rejected",
           reason,

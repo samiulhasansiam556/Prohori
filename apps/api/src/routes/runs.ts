@@ -269,6 +269,22 @@ async function addTrace(
   if (error) throw error;
 }
 
+async function getLastStepNo(
+  supabase: ReturnType<typeof createUserSupabaseClient>,
+  runId: string,
+): Promise<number> {
+  const { data, error } = await supabase
+    .from("trace_steps")
+    .select("step_no")
+    .eq("run_id", runId)
+    .order("step_no", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return data?.step_no ?? 0;
+}
 runsRouter.post("/", requireAuth, async (req, res) => {
   const parsed = startSchema.safeParse(req.body);
 
@@ -382,28 +398,21 @@ if (needsPolicyEvidence) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({
-        agentId: agent_id,
-        args,
-      }),
+    body: JSON.stringify({
+  agentId: agent_id,
+  args,
+}),
       signal: AbortSignal.timeout(120000),
     }
   );
 
   const gatewayResult: any = await gatewayResponse.json();
 
-  stepNo++;
-
-  await addTrace(supabase, runId, stepNo, "tool_call", {
-    toolName,
-    args,
-    result: gatewayResult,
-    decision:
-      gatewayResult.decision ??
-      (gatewayResponse.ok ? "allow" : "deny"),
-    reason: gatewayResult.reason ?? gatewayResult.message,
-    latencyMs: Date.now() - toolStarted,
-  });
+ body: JSON.stringify({
+  agentId: agent_id,
+  runId,
+  args,
+})
 
   if (
     !gatewayResponse.ok ||
@@ -530,17 +539,10 @@ const messages: any[] = [
             }
           );
 
-          const gatewayResult: any = await gatewayResponse.json();
+         
+          
 
-          stepNo++;
-          await addTrace(supabase, runId, stepNo, "tool_call", {
-            toolName,
-            args,
-            result: gatewayResult,
-            decision: gatewayResult.decision ?? (gatewayResponse.ok ? "allow" : "deny"),
-            reason: gatewayResult.reason ?? gatewayResult.message,
-            latencyMs: Date.now() - toolStarted,
-          });
+         const gatewayResult: any = await gatewayResponse.json();
 
           if (gatewayResult.decision === "require_approval") {
             await supabase
