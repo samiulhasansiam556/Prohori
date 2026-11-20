@@ -408,6 +408,9 @@ if (needsPolicyEvidence) {
   );
 
   const gatewayResult: any = await gatewayResponse.json();
+  // Gateway একই Parent Run-এ policy ও tool traces লিখেছে.
+// পরবর্তী LLM trace-এর আগে counter synchronize করতে হবে।
+stepNo = await getLastStepNo(supabase, runId);
 
   if (
     !gatewayResponse.ok ||
